@@ -1,122 +1,104 @@
 import { useState } from "react";
-import PreviewRenderer from "./preview/PreviewRenderer";
+import PreviewRenderer from "../frontend-app/src/preview/PreviewRenderer";
+// If your actual path is different, keep your original import path for PreviewRenderer.
 
-function App() {
-  const [prompt, setPrompt] = useState("");
-  const [plan, setPlan] = useState(null);
-  const [code, setCode] = useState("");
+export default function App() {
+  const [messages, setMessages] = useState([]);
+  const [generatedCode, setGeneratedCode] = useState("");
   const [explanation, setExplanation] = useState("");
-
   const [history, setHistory] = useState([]);
-  const [selectedVersion, setSelectedVersion] = useState("");
+  const [currentPlan, setCurrentPlan] = useState(null);
+  const [planHistory, setPlanHistory] = useState([]);
 
-  const handleGenerate = async () => {
-    const res = await fetch("http://localhost:5000/api/generate", {
+  const sendMessage = async (userMessage) => {
+    // ✅ For Netlify/Vite: set VITE_API_URL in Netlify env vars
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+    const res = await fetch(`${API_URL}/api/generate`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        message: prompt,
-        previousPlan: plan, // important for iteration
+        message: userMessage, // ✅ fixed: was prompt
       }),
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      alert(data.error);
+      console.log("Error:", data);
       return;
     }
 
-    setPlan(data.plan);
-    setCode(data.code);
-    setExplanation(data.explanation);
+    // Save history before updating
+    setHistory((prev) => [...prev, generatedCode]);
+    setPlanHistory((prev) => [...prev, currentPlan]);
 
-    const newVersion = {
-      plan: data.plan,
-      code: data.code,
-      explanation: data.explanation,
-    };
+    setGeneratedCode(data.code || "");
+    setExplanation(data.explanation || "");
+    setCurrentPlan(data.plan || null);
 
-    setHistory((prev) => [...prev, newVersion]);
-    setSelectedVersion(history.length);
+    // Optional: store chat messages if you want them displayed
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", text: userMessage },
+      { role: "ai", text: data.explanation || "Done." },
+    ]);
   };
 
-  const handleVersionChange = (index) => {
-    const version = history[index];
-    if (!version) return;
-
-    setPlan(version.plan);
-    setCode(version.code);
-    setExplanation(version.explanation);
-    setSelectedVersion(index);
+  const rollback = (index) => {
+    setGeneratedCode(history[index] || "");
   };
 
   return (
-    <div style={{ display: "flex", height: "100vh", fontFamily: "Arial" }}>
-      
-      {/* LEFT PANEL */}
-      <div style={{ width: "40%", padding: "20px", borderRight: "1px solid #ddd" }}>
-        <h2>AI Chat</h2>
+    <div className="grid grid-cols-3 h-screen">
+      {/* LEFT PANEL — CHAT */}
+      <div className="border-r flex flex-col">
+        <div className="flex-1 overflow-auto p-4 space-y-2">
+          {messages.map((m, i) => (
+            <div key={i} className="text-sm">
+              <strong>{m.role === "user" ? "You" : "AI"}:</strong> {m.text}
+            </div>
+          ))}
+        </div>
 
-        <textarea
-          rows="5"
-          style={{ width: "100%" }}
-          placeholder="Describe your UI..."
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-        />
-
-        <br /><br />
-
-        <button onClick={handleGenerate}>Generate / Modify UI</button>
-
-        <br /><br />
-
-        {history.length > 0 && (
-          <>
-            <h3>Versions</h3>
-            <select
-              value={selectedVersion}
-              onChange={(e) => handleVersionChange(e.target.value)}
-            >
-              {history.map((_, i) => (
-                <option key={i} value={i}>
-                  Version {i + 1}
-                </option>
-              ))}
-            </select>
-          </>
-        )}
-
-        <hr />
-
-        <h3>Explanation</h3>
-        <p>{explanation}</p>
+        {/* Make sure ChatInput exists in your project.
+            If it’s in another file, keep your original import/usage. */}
+        <ChatInput onSend={sendMessage} />
       </div>
 
-      {/* RIGHT PANEL */}
-      <div style={{ width: "60%", padding: "20px" }}>
-        <h2>Generated Code (Editable)</h2>
-
+      {/* MIDDLE PANEL — CODE */}
+      <div className="border-r p-2 flex flex-col">
+        <h2 className="font-bold mb-2">Generated Code</h2>
         <textarea
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          style={{
-            width: "100%",
-            height: "200px",
-            fontFamily: "monospace",
-          }}
+          className="flex-1 border p-2 font-mono text-sm"
+          value={generatedCode}
+          onChange={(e) => setGeneratedCode(e.target.value)}
         />
 
-        <hr />
+        <h2 className="font-bold mt-2">AI Explanation</h2>
+        <div className="text-sm bg-gray-50 p-2 border rounded">
+          {explanation}
+        </div>
 
-        <h2>Live Preview</h2>
-        {code && <PreviewRenderer code={code} />}
+        <h2 className="font-bold mt-2">History</h2>
+        <div className="flex gap-2 flex-wrap">
+          {history.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => rollback(i)}
+              className="px-2 py-1 text-xs bg-gray-200 rounded"
+            >
+              Version {i + 1}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* RIGHT PANEL — LIVE PREVIEW */}
+      <div className="p-4 bg-gray-100">
+        <h2 className="font-bold mb-2">Live Preview</h2>
+        <PreviewRenderer code={generatedCode} />
       </div>
     </div>
   );
 }
-
-export default App;
