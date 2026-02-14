@@ -1,92 +1,139 @@
 import { useState } from "react";
 import PreviewRenderer from "./preview/PreviewRenderer";
-import ChatInput from "./chat/ChatInput";
 
-export default function App() {
-  const [messages, setMessages] = useState([]);
-  const [generatedCode, setGeneratedCode] = useState("");
+function App() {
+  const [prompt, setPrompt] = useState("");
+  const [plan, setPlan] = useState(null);
+  const [code, setCode] = useState("");
   const [explanation, setExplanation] = useState("");
+
   const [history, setHistory] = useState([]);
-  const [currentPlan, setCurrentPlan] = useState(null);
-  const [planHistory, setPlanHistory] = useState([]);
+  const [selectedVersion, setSelectedVersion] = useState("");
 
-  const sendMessage = async (userMessage) => {
-    const API_URL = "https://ai-ui-generator-production-4012.up.railway.app";
-
-    const res = await fetch(`${API_URL}/api/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: userMessage }),
-    });
+  const handleGenerate = async () => {
+    const res = await fetch(
+      "https://ai-ui-generator-production-4012.up.railway.app/api/generate",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: prompt,
+          previousPlan: plan, // important for iteration
+        }),
+      }
+    );
 
     const data = await res.json();
 
     if (!res.ok) {
-      console.log("Error:", data);
+      alert(data?.error || "Something went wrong");
       return;
     }
 
-    setHistory((prev) => [...prev, generatedCode]);
-    setPlanHistory((prev) => [...prev, currentPlan]);
+    // ✅ Fix for "App is not defined" in Live Preview:
+    // If backend returns "export default ..." without defining App, make it define App.
+    let incomingCode = data.code || "";
+    if (incomingCode && !/function\s+App\s*\(|const\s+App\s*=|class\s+App\s+extends/.test(incomingCode)) {
+      // Try to convert "export default function X()" to "function App()"
+      incomingCode = incomingCode
+        .replace(/export\s+default\s+function\s+\w+\s*\(/, "function App(")
+        .replace(/export\s+default\s+function\s*\(/, "function App(");
 
-    setGeneratedCode(data.code || "");
-    setExplanation(data.explanation || "");
-    setCurrentPlan(data.plan || null);
+      // If it still doesn't export default, add it
+      if (!/export\s+default\s+App\s*;/.test(incomingCode)) {
+        incomingCode += "\n\nexport default App;\n";
+      }
+    }
 
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", text: userMessage },
-      { role: "ai", text: data.explanation || "Done." },
-    ]);
+    setPlan(data.plan);
+    setCode(incomingCode);
+    setExplanation(data.explanation);
+
+    const newVersion = {
+      plan: data.plan,
+      code: incomingCode,
+      explanation: data.explanation,
+    };
+
+    setHistory((prev) => [...prev, newVersion]);
+    setSelectedVersion(history.length);
   };
 
-  const rollback = (index) => setGeneratedCode(history[index] || "");
+  const handleVersionChange = (index) => {
+    const i = Number(index);
+    const version = history[i];
+    if (!version) return;
+
+    setPlan(version.plan);
+    setCode(version.code);
+    setExplanation(version.explanation);
+    setSelectedVersion(i);
+  };
 
   return (
-    <div className="grid grid-cols-3 h-screen">
-      <div className="border-r flex flex-col">
-        <div className="flex-1 overflow-auto p-4 space-y-2">
-          {messages.map((m, i) => (
-            <div key={i} className="text-sm">
-              <strong>{m.role === "user" ? "You" : "AI"}:</strong> {m.text}
-            </div>
-          ))}
-        </div>
+    <div style={{ display: "flex", height: "100vh", fontFamily: "Arial" }}>
+      {/* LEFT PANEL */}
+      <div style={{ width: "40%", padding: "20px", borderRight: "1px solid #ddd" }}>
+        <h2>AI Chat</h2>
 
-        <ChatInput onSend={sendMessage} />
-      </div>
-
-      <div className="border-r p-2 flex flex-col">
-        <h2 className="font-bold mb-2">Generated Code</h2>
         <textarea
-          className="flex-1 border p-2 font-mono text-sm"
-          value={generatedCode}
-          onChange={(e) => setGeneratedCode(e.target.value)}
+          rows="5"
+          style={{ width: "100%" }}
+          placeholder="Describe your UI..."
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
         />
 
-        <h2 className="font-bold mt-2">AI Explanation</h2>
-        <div className="text-sm bg-gray-50 p-2 border rounded">
-          {explanation}
-        </div>
+        <br />
+        <br />
 
-        <h2 className="font-bold mt-2">History</h2>
-        <div className="flex gap-2 flex-wrap">
-          {history.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => rollback(i)}
-              className="px-2 py-1 text-xs bg-gray-200 rounded"
-            >
-              Version {i + 1}
-            </button>
-          ))}
-        </div>
+        <button onClick={handleGenerate}>Generate / Modify UI</button>
+
+        <br />
+        <br />
+
+        {history.length > 0 && (
+          <>
+            <h3>Versions</h3>
+            <select value={selectedVersion} onChange={(e) => handleVersionChange(e.target.value)}>
+              {history.map((_, i) => (
+                <option key={i} value={i}>
+                  Version {i + 1}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+
+        <hr />
+
+        <h3>Explanation</h3>
+        <p>{explanation}</p>
       </div>
 
-      <div className="p-4 bg-gray-100">
-        <h2 className="font-bold mb-2">Live Preview</h2>
-        <PreviewRenderer code={generatedCode} />
+      {/* RIGHT PANEL */}
+      <div style={{ width: "60%", padding: "20px" }}>
+        <h2>Generated Code (Editable)</h2>
+
+        <textarea
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          style={{
+            width: "100%",
+            height: "200px",
+            fontFamily: "monospace",
+          }}
+        />
+
+        <hr />
+
+        <h2>Live Preview</h2>
+        {code && <PreviewRenderer code={code} />}
       </div>
     </div>
   );
 }
+
+export default App;
