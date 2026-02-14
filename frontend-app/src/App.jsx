@@ -1,6 +1,6 @@
 import { useState } from "react";
-import PreviewRenderer from "../frontend-app/src/preview/PreviewRenderer";
-// If your actual path is different, keep your original import path for PreviewRenderer.
+import PreviewRenderer from "./preview/PreviewRenderer";
+import ChatInput from "./chat/ChatInput";
 
 export default function App() {
   const [messages, setMessages] = useState([]);
@@ -11,15 +11,12 @@ export default function App() {
   const [planHistory, setPlanHistory] = useState([]);
 
   const sendMessage = async (userMessage) => {
-    // ✅ For Netlify/Vite: set VITE_API_URL in Netlify env vars
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    const API_URL = "https://ai-ui-generator-production-4012.up.railway.app";
 
     const res = await fetch(`${API_URL}/api/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: userMessage, // ✅ fixed: was prompt
-      }),
+      body: JSON.stringify({ message: userMessage }),
     });
 
     const data = await res.json();
@@ -29,7 +26,6 @@ export default function App() {
       return;
     }
 
-    // Save history before updating
     setHistory((prev) => [...prev, generatedCode]);
     setPlanHistory((prev) => [...prev, currentPlan]);
 
@@ -37,7 +33,6 @@ export default function App() {
     setExplanation(data.explanation || "");
     setCurrentPlan(data.plan || null);
 
-    // Optional: store chat messages if you want them displayed
     setMessages((prev) => [
       ...prev,
       { role: "user", text: userMessage },
@@ -45,13 +40,10 @@ export default function App() {
     ]);
   };
 
-  const rollback = (index) => {
-    setGeneratedCode(history[index] || "");
-  };
+  const rollback = (index) => setGeneratedCode(history[index] || "");
 
   return (
     <div className="grid grid-cols-3 h-screen">
-      {/* LEFT PANEL — CHAT */}
       <div className="border-r flex flex-col">
         <div className="flex-1 overflow-auto p-4 space-y-2">
           {messages.map((m, i) => (
@@ -61,12 +53,9 @@ export default function App() {
           ))}
         </div>
 
-        {/* Make sure ChatInput exists in your project.
-            If it’s in another file, keep your original import/usage. */}
         <ChatInput onSend={sendMessage} />
       </div>
 
-      {/* MIDDLE PANEL — CODE */}
       <div className="border-r p-2 flex flex-col">
         <h2 className="font-bold mb-2">Generated Code</h2>
         <textarea
@@ -94,7 +83,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* RIGHT PANEL — LIVE PREVIEW */}
       <div className="p-4 bg-gray-100">
         <h2 className="font-bold mb-2">Live Preview</h2>
         <PreviewRenderer code={generatedCode} />
