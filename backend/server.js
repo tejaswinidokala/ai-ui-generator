@@ -12,16 +12,19 @@ import cors from "cors";
 import generateRoute from "./routes/generate.js";
 
 const app = express();
-app.use(cors({
-  origin: [
-    "http://localhost:3000",
-    "http://localhost:5173",
-      "https://quiet-dusk-a14c69.netlify.app",
-  ],
-  methods: ["GET", "POST","OPTIONS"],
-   allowedHeaders: ["Content-Type", "Authorization"],
-}));
-app.options("*", cors());
+// 🔥 Force CORS for Netlify (handles preflight OPTIONS)
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*"); 
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+
 app.use(express.json());
 
 app.use("/api/generate", generateRoute);
