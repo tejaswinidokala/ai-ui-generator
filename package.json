@@ -1,7 +1,0 @@
-{
-  "name": "ai-ui-generator-monorepo",
-  "private": true,
-  "scripts": {
-    "start": "bash start.sh"
-  }
-}
