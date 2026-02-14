@@ -1,7 +1,7 @@
 import React from "react";
 import * as Babel from "@babel/standalone";
-import { componentRegistry } from "../../../frontend/components/registry";
-import { validateGeneratedCode } from "../../../frontend/utils/validator";
+import { componentRegistry } from "../components/registry";
+import { validateGeneratedCode } from "../utils/validator";
 
 export default function PreviewRenderer({ code }) {
   const validation = validateGeneratedCode(code);
