@@ -15,6 +15,7 @@ const app = express();
 app.use(cors({
   origin: [
     "http://localhost:3000",
+    "http://localhost:5173",
     "https://YOUR_VERCEL_DOMAIN.vercel.app"
   ],
   methods: ["GET", "POST"]
