@@ -12,9 +12,20 @@ import cors from "cors";
 import generateRoute from "./routes/generate.js";
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "https://YOUR_VERCEL_DOMAIN.vercel.app"
+  ],
+  methods: ["GET", "POST"]
+}));
+
 app.use(express.json());
 
 app.use("/api/generate", generateRoute);
+const PORT = process.env.PORT || 5000;
 
-app.listen(5000, () => console.log("Server running on port 5000"));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
