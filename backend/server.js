@@ -16,11 +16,12 @@ app.use(cors({
   origin: [
     "http://localhost:3000",
     "http://localhost:5173",
-    "https://YOUR_VERCEL_DOMAIN.vercel.app"
+      "https://quiet-dusk-a14c69.netlify.app",
   ],
-  methods: ["GET", "POST"]
+  methods: ["GET", "POST","OPTIONS"],
+   allowedHeaders: ["Content-Type", "Authorization"],
 }));
-
+app.options("*", cors());
 app.use(express.json());
 
 app.use("/api/generate", generateRoute);
