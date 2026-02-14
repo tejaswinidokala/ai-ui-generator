@@ -11,9 +11,7 @@ function App() {
   const [selectedVersion, setSelectedVersion] = useState("");
 
   const handleGenerate = async () => {
-    const res = await fetch(
-      "https://ai-ui-generator-production-4012.up.railway.app/api/generate",
-      {
+   const res = await fetch("/api/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
