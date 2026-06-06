@@ -8,6 +8,7 @@ frontend-app/.env.local
 node_modules
 dist
 build
+frontend-app/dist
 
 # logs
 *.log
