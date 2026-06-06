@@ -1,54 +1,110 @@
 export async function runPlanner(message, previousPlan) {
+  const text = message.toLowerCase();
+
   let plan = previousPlan
     ? JSON.parse(JSON.stringify(previousPlan))
     : {
-        layout: "dashboard",
+        layout: "custom",
         components: [],
       };
 
-  if (!previousPlan) {
-    plan.components.push({
-      type: "Navbar",
-      props: { title: "Demo App" },
-    });
+  const hasComponent = (type) => {
+    return plan.components.some((component) => component.type === type);
+  };
 
-    plan.components.push({
-      type: "Sidebar",
-      props: { items: ["Home", "Users", "Settings"] },
-    });
+  const addComponent = (type, props = {}) => {
+    if (!hasComponent(type)) {
+      plan.components.push({
+        type,
+        props,
+      });
+    }
+  };
 
-    plan.components.push({
-      type: "Card",
-      props: { title: "Overview" },
+  // If user asks for a full dashboard/app layout
+  if (
+    !previousPlan &&
+    (text.includes("dashboard") ||
+      text.includes("admin panel") ||
+      text.includes("full app") ||
+      text.includes("complete app") ||
+      text.includes("layout"))
+  ) {
+    plan.layout = "dashboard";
+
+    addComponent("Navbar", { title: "Demo App" });
+    addComponent("Sidebar", { items: ["Home", "Users", "Settings"] });
+    addComponent("Card", {
+      title: "Overview",
+      description: "A clean overview card for your dashboard.",
     });
   }
 
-  // Incremental modifications
-  if (message.toLowerCase().includes("modal")) {
-    const exists = plan.components.some((c) => c.type === "Modal");
-
-    if (!exists) {
-      plan.components.push({
-        type: "Modal",
-        props: { title: "Settings Modal" },
-      });
-    }
+  // Navbar
+  if (
+    text.includes("navbar") ||
+    text.includes("navigation") ||
+    text.includes("header")
+  ) {
+    addComponent("Navbar", { title: "Demo App" });
   }
 
-  if (message.toLowerCase().includes("button")) {
-    const exists = plan.components.some((c) => c.type === "Button");
+  // Sidebar
+  if (text.includes("sidebar") || text.includes("menu")) {
+    addComponent("Sidebar", { items: ["Home", "Users", "Settings"] });
+  }
 
-    if (!exists) {
-      plan.components.push({
-        type: "Button",
-        props: { label: "Click Me" },
-      });
-    }
+  // Card
+  if (
+    text.includes("card") ||
+    text.includes("overview") ||
+    text.includes("section")
+  ) {
+    addComponent("Card", {
+      title: "Overview",
+      description: "This card contains clean content with modern spacing and styling.",
+    });
+  }
+
+  // Button
+  if (text.includes("button") || text.includes("click")) {
+    addComponent("Button", {
+      label: extractQuotedText(message) || "Click Me",
+    });
+  }
+
+  // Input
+  if (
+    text.includes("input") ||
+    text.includes("textbox") ||
+    text.includes("text box") ||
+    text.includes("form")
+  ) {
+    addComponent("Input", {
+      placeholder: "Enter your text...",
+    });
+  }
+
+  // Modal
+  if (text.includes("modal") || text.includes("popup")) {
+    addComponent("Modal", {
+      title: "Settings Modal",
+      content: "This is a clean modal component.",
+    });
+  }
+
+  // Fallback if nothing matched
+  if (plan.components.length === 0) {
+    addComponent("Card", {
+      title: "Generated UI",
+      description: message,
+    });
   }
 
   return plan;
 }
 
-
-  
-  
+function extractQuotedText(message) {
+  const match = message.match(/["']([^"']+)["']/);
+  return match ? match[1] : null;
+}
